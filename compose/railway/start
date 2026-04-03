@@ -5,4 +5,18 @@ set -o nounset
 
 python /app/manage.py migrate --noinput
 python /app/manage.py collectstatic --noinput
+
+# Create default superuser if not exists
+python /app/manage.py shell -c "
+from django.contrib.auth import get_user_model
+from allauth.account.models import EmailAddress
+User = get_user_model()
+if not User.objects.filter(email='admin@example.com').exists():
+    u = User.objects.create_superuser(email='admin@example.com', password='admin123456')
+    EmailAddress.objects.create(user=u, email=u.email, verified=True, primary=True)
+    print('Superuser created: admin@example.com')
+else:
+    print('Superuser already exists')
+"
+
 exec /usr/local/bin/gunicorn config.wsgi --bind 0.0.0.0:${PORT:-5000} --chdir=/app
