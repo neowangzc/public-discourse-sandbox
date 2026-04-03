@@ -6,17 +6,70 @@ set -o nounset
 python /app/manage.py migrate --noinput
 python /app/manage.py collectstatic --noinput
 
-# Create default superuser if not exists
+# Create default users and test data if not exists
 python /app/manage.py shell -c "
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from allauth.account.models import EmailAddress
+from public_discourse_sandbox.pds_app.models import Experiment, UserProfile, SocialNetwork
+
 User = get_user_model()
+
+# Create researcher group
+researcher_group, _ = Group.objects.get_or_create(name='researcher')
+
+# Create superuser
 if not User.objects.filter(email='admin@example.com').exists():
     u = User.objects.create_superuser(email='admin@example.com', password='admin123456')
     EmailAddress.objects.create(user=u, email=u.email, verified=True, primary=True)
-    print('Superuser created: admin@example.com')
-else:
-    print('Superuser already exists')
+    u.groups.add(researcher_group)
+    print('Superuser created')
+
+# Create test users
+test_data = [
+    ('user1@test.com', 'Alice Chen', 'alice', 'Interested in AI and social dynamics.'),
+    ('user2@test.com', 'Bob Smith', 'bob', 'Political science researcher.'),
+    ('user3@test.com', 'Carol Wang', 'carol', 'Studying online discourse patterns.'),
+    ('user4@test.com', 'David Lee', 'david', 'Tech enthusiast and blogger.'),
+    ('user5@test.com', 'Eve Zhang', 'eve', 'Data scientist exploring NLP.'),
+]
+
+users = []
+for email, display_name, username, bio in test_data:
+    user, created = User.objects.get_or_create(email=email)
+    if created:
+        user.set_password('test123456')
+        user.save()
+        EmailAddress.objects.create(user=user, email=email, verified=True, primary=True)
+        print(f'Created user: {email}')
+    users.append(user)
+
+# Create experiment
+admin = User.objects.get(email='admin@example.com')
+exp, created = Experiment.objects.get_or_create(
+    name='Social Media Research',
+    defaults={'description': 'A test experiment for studying social media discussions.', 'creator': admin, 'identifier': 'test1'}
+)
+if created:
+    print(f'Experiment created: {exp.identifier}')
+
+# Create profiles
+admin_profile, _ = UserProfile.objects.get_or_create(user=admin, experiment=exp, defaults={'display_name': 'Admin', 'username': 'admin', 'bio': 'Platform administrator.', 'is_moderator': True})
+profiles = []
+for i, (email, display_name, username, bio) in enumerate(test_data):
+    p, _ = UserProfile.objects.get_or_create(user=users[i], experiment=exp, defaults={'display_name': display_name, 'username': username, 'bio': bio})
+    profiles.append(p)
+
+# Follow relationships
+for src, tgt in [(0,1),(0,2),(1,0),(1,3),(2,0),(2,4),(3,1),(4,2)]:
+    SocialNetwork.objects.get_or_create(source_node=profiles[src], target_node=profiles[tgt])
+
+for p in profiles:
+    p.num_following = SocialNetwork.objects.filter(source_node=p).count()
+    p.num_followers = SocialNetwork.objects.filter(target_node=p).count()
+    p.save()
+
+print('Test data ready!')
 "
 
 exec /usr/local/bin/gunicorn config.wsgi --bind 0.0.0.0:${PORT:-5000} --chdir=/app
