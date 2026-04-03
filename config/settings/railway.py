@@ -104,3 +104,7 @@ SPECTACULAR_SETTINGS["SERVERS"] = [
 # Disable mandatory 2FA for Railway deployment
 # ------------------------------------------------------------------------------
 MIDDLEWARE = [m for m in MIDDLEWARE if m != "public_discourse_sandbox.contrib.mfa.middleware.AllUserRequire2FAMiddleware"]
+
+# Simplify email verification for testing
+# ------------------------------------------------------------------------------
+ACCOUNT_EMAIL_VERIFICATION = "none"
