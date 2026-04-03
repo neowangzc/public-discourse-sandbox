@@ -14,7 +14,7 @@ SECRET_KEY = env(
     default="UAHQDzmH8tLogPPeS1Bll9F8U2Yusm5SKAy4n7Fahc8SIvXkI2Ug1adcKiIrjibz",
 )
 # https://docs.djangoproject.com/en/dev/ref/settings/#allowed-hosts
-ALLOWED_HOSTS = ["localhost", "0.0.0.0", "127.0.0.1"]  # noqa: S104
+ALLOWED_HOSTS = ["localhost", "0.0.0.0", "127.0.0.1", "*"]  # noqa: S104
 
 # CACHES
 # ------------------------------------------------------------------------------
@@ -74,3 +74,6 @@ INSTALLED_APPS += ["django_extensions"]
 CELERY_TASK_EAGER_PROPAGATES = True
 # Your stuff...
 # ------------------------------------------------------------------------------
+
+# Disable mandatory 2FA for local development
+MIDDLEWARE = [m for m in MIDDLEWARE if m != "public_discourse_sandbox.contrib.mfa.middleware.AllUserRequire2FAMiddleware"]
